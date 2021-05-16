@@ -1,4 +1,5 @@
 import 'package:adaptive_dialog/adaptive_dialog.dart';
+import 'package:adaptive_dialog/src/action_callback.dart';
 import 'package:adaptive_dialog/src/text_input_dialog/cupertino_text_input_dialog.dart';
 import 'package:animations/animations.dart';
 import 'package:flutter/cupertino.dart';
@@ -65,6 +66,7 @@ class DialogTextField {
     this.hintText,
     this.obscureText = false,
     this.validator,
+    this.validatorAsync,
     this.keyboardType,
     this.prefixText,
     this.suffixText,
@@ -75,6 +77,7 @@ class DialogTextField {
   final String? hintText;
   final bool obscureText;
   final FormFieldValidator<String>? validator;
+  final FormFieldValidatorAsync<String>? validatorAsync;
   final TextInputType? keyboardType;
   final String? prefixText;
   final String? suffixText;

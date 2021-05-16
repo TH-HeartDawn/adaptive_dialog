@@ -169,9 +169,11 @@ class _CupertinoTextInputDialogState extends State<CupertinoTextInputDialog> {
         ),
         CupertinoDialogAction(
           child: okText,
-          onPressed: () {
+          onPressed: () async {
             if (_validate()) {
-              pop();
+              if (await _validateAsync()) {
+                pop();
+              }
             }
           },
         ),
@@ -185,6 +187,26 @@ class _CupertinoTextInputDialogState extends State<CupertinoTextInputDialog> {
       final validator = tf.validator;
       return validator == null ? null : validator(_textControllers[i].text);
     }).where((result) => result != null);
+    setState(() {
+      _validationMessage = validations.join('\n');
+    });
+    return validations.isEmpty;
+  }
+
+  Future<bool> _validateAsync() async {
+    var i = 0;
+    final validations = <String>[];
+    // ignore: avoid_function_literals_in_foreach_calls
+    widget.textFields.forEach((element) async {
+      final validator = element.validatorAsync;
+      if (validator != null) {
+        final result = await validator(_textControllers[i].text);
+        if (result != null) {
+          validations.add(result);
+        }
+      }
+      i++;
+    });
     setState(() {
       _validationMessage = validations.join('\n');
     });
