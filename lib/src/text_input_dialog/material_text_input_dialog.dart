@@ -166,8 +166,8 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
   Future<bool> _validateAsync() async {
     var i = 0;
     final validations = <String>[];
-    // ignore: avoid_function_literals_in_foreach_calls
-    widget.textFields.forEach((element) async {
+    for(final item in widget.textFields) {
+      final element = widget.textFields[i];
       final validator = element.validatorAsync;
       if (validator != null) {
         final result = await validator(_textControllers[i].text);
@@ -176,7 +176,7 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
         }
       }
       i++;
-    });
+    }
     setState(() {
       _validationMessage = validations.join('\n');
     });
