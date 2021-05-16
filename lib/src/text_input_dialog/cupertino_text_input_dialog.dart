@@ -33,6 +33,7 @@ class _CupertinoTextInputDialogState extends State<CupertinoTextInputDialog> {
       .map((tf) => TextEditingController(text: tf.initialText))
       .toList();
   String? _validationMessage;
+  String? _validationMessageAsync;
   bool _autovalidate = false;
 
   @override
@@ -107,8 +108,9 @@ class _CupertinoTextInputDialogState extends State<CupertinoTextInputDialog> {
         ),
       );
     }
-
-    final validationMessage = _validationMessage;
+    final msg = _validationMessage ?? '';
+    final msgAsync = _validationMessageAsync ?? '';
+    final validationMessage = msg.length != 0 ? msg : msgAsync;
     return CupertinoAlertDialog(
       title: titleText,
       content: Column(
@@ -138,7 +140,7 @@ class _CupertinoTextInputDialogState extends State<CupertinoTextInputDialog> {
               );
             },
           ),
-          if (validationMessage != null)
+          if (validationMessage.length != 0)
             Container(
               alignment: AlignmentDirectional.centerStart,
               padding: const EdgeInsets.only(
@@ -188,7 +190,7 @@ class _CupertinoTextInputDialogState extends State<CupertinoTextInputDialog> {
       return validator == null ? null : validator(_textControllers[i].text);
     }).where((result) => result != null);
     setState(() {
-      _validationMessage = validations.join('\n');
+      _validationMessageAsync = validations.join('\n');
     });
     return validations.isEmpty;
   }
