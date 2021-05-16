@@ -37,6 +37,7 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
       .toList();
   final _formKey = GlobalKey<FormState>();
   var _autovalidateMode = AutovalidateMode.disabled;
+  String? _validationMessage;
 
   @override
   void initState() {
@@ -75,6 +76,7 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
         color: widget.isDestructiveAction ? colorScheme.error : null,
       ),
     );
+    final validationMessage = _validationMessage;
     return Form(
       key: _formKey,
       child: AlertDialog(
@@ -111,7 +113,23 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
                 validator: textField.validator,
                 autovalidateMode: _autovalidateMode,
               );
-            })
+              },
+            ),
+            validationMessage != null ? Container(
+              alignment: AlignmentDirectional.centerStart,
+              padding: const EdgeInsets.only(
+                top: 4,
+                left: 4,
+              ),
+              child: Text(
+                validationMessage,
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.start,
+              ),
+            ) : new Container()
           ],
         ),
         actions: [
@@ -126,9 +144,12 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
           ),
           TextButton(
             child: okText,
-            onPressed: () {
+            onPressed: () async{
               if (_formKey.currentState!.validate()) {
-                pop();
+                if (await _validateAsync()) {
+                  pop();
+                }
+
               } else if (_autovalidateMode == AutovalidateMode.disabled) {
                 setState(() {
                   _autovalidateMode = AutovalidateMode.always;
@@ -140,5 +161,25 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
         actionsOverflowDirection: widget.actionsOverflowDirection,
       ),
     );
+  }
+
+  Future<bool> _validateAsync() async {
+    var i = 0;
+    final validations = <String>[];
+    // ignore: avoid_function_literals_in_foreach_calls
+    widget.textFields.forEach((element) async {
+      final validator = element.validatorAsync;
+      if (validator != null) {
+        final result = await validator(_textControllers[i].text);
+        if (result != null) {
+          validations.add(result);
+        }
+      }
+      i++;
+    });
+    setState(() {
+      _validationMessage = validations.join('\n');
+    });
+    return validations.isEmpty;
   }
 }
