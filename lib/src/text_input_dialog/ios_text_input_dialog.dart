@@ -179,7 +179,11 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
             ),
           ),
           CupertinoDialogAction(
-            onPressed: submitIfValid,
+            onPressed: () async {
+              if (_validate() && await _validateAsync()) {
+                submit();
+              }
+            },
             child: Text(
               widget.okLabel ?? MaterialLocalizations.of(context).okButtonLabel,
               style: TextStyle(
@@ -200,6 +204,27 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
       final validator = tf.validator;
       return validator == null ? null : validator(_textControllers[i].text);
     }).where((result) => result != null);
+    setState(() {
+      _validationMessage = validations.join('\n');
+    });
+    return validations.isEmpty;
+  }
+
+  // 异步验证
+  Future<bool> _validateAsync() async {
+    _autovalidate = true;
+    var i = 0;
+    final validations = <String>[];
+    for (final element in widget.textFields) {
+      final validator = element.validatorAsync;
+      if (validator != null) {
+        final result = await validator(_textControllers[i].text);
+        if (result != null) {
+          validations.add(result);
+        }
+      }
+      i++;
+    }
     setState(() {
       _validationMessage = validations.join('\n');
     });

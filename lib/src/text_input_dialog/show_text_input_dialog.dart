@@ -117,6 +117,7 @@ class DialogTextField {
     this.hintText,
     this.obscureText = false,
     this.validator,
+    this.validatorAsync,
     this.keyboardType,
     this.textCapitalization = TextCapitalization.none,
     this.prefixText,
@@ -130,6 +131,7 @@ class DialogTextField {
   final String? hintText;
   final bool obscureText;
   final FormFieldValidator<String>? validator;
+  final FormFieldAsyncValidator<String>? validatorAsync;
   final TextInputType? keyboardType;
   final TextCapitalization textCapitalization;
   final String? prefixText;
