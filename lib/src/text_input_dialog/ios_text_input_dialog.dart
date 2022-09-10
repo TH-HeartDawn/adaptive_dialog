@@ -203,7 +203,7 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
     final validations = widget.textFields.mapIndexed((i, tf) {
       final validator = tf.validator;
       return validator == null ? null : validator(_textControllers[i].text);
-    }).where((result) => result != null);
+    }).where((result) => result != null && result.isNotEmpty);
     setState(() {
       _validationMessage = validations.join('\n');
     });
@@ -219,7 +219,7 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
       final validator = element.validatorAsync;
       if (validator != null) {
         final result = await validator(_textControllers[i].text);
-        if (result != null) {
+        if (result != null && result.isEmpty) {
           validations.add(result);
         }
       }
