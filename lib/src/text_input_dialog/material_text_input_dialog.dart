@@ -1,9 +1,11 @@
 import 'package:adaptive_dialog/adaptive_dialog.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:adaptive_dialog/src/extensions/extensions.dart';
 
+// TODO(mono): 3ファイルでコピペ実装になっているのを良い感じにまとめたい
 class MaterialTextInputDialog extends StatefulWidget {
   const MaterialTextInputDialog({
+    super.key,
     required this.textFields,
     this.title,
     this.message,
@@ -14,9 +16,11 @@ class MaterialTextInputDialog extends StatefulWidget {
     this.actionsOverflowDirection = VerticalDirection.up,
     this.useRootNavigator = true,
     this.fullyCapitalized = true,
+    this.onWillPop,
+    this.autoSubmit = false,
   });
   @override
-  _MaterialTextInputDialogState createState() =>
+  State<MaterialTextInputDialog> createState() =>
       _MaterialTextInputDialogState();
 
   final List<DialogTextField> textFields;
@@ -29,6 +33,8 @@ class MaterialTextInputDialog extends StatefulWidget {
   final VerticalDirection actionsOverflowDirection;
   final bool useRootNavigator;
   final bool fullyCapitalized;
+  final WillPopCallback? onWillPop;
+  final bool autoSubmit;
 }
 
 class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
@@ -37,7 +43,6 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
       .toList();
   final _formKey = GlobalKey<FormState>();
   var _autovalidateMode = AutovalidateMode.disabled;
-  String? _validationMessage;
 
   @override
   void initState() {
@@ -62,9 +67,19 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
       context,
       rootNavigator: widget.useRootNavigator,
     );
-    void pop() => navigator.pop(
+    void submit() => navigator.pop(
           _textControllers.map((c) => c.text).toList(),
         );
+    void submitIfValid() {
+      if (_formKey.currentState!.validate()) {
+        submit();
+      } else if (_autovalidateMode == AutovalidateMode.disabled) {
+        setState(() {
+          _autovalidateMode = AutovalidateMode.always;
+        });
+      }
+    }
+
     void cancel() => navigator.pop();
     final titleText = title == null ? null : Text(title);
     final cancelLabel = widget.cancelLabel;
@@ -76,110 +91,73 @@ class _MaterialTextInputDialogState extends State<MaterialTextInputDialog> {
         color: widget.isDestructiveAction ? colorScheme.error : null,
       ),
     );
-    final validationMessage = _validationMessage;
-    return Form(
-      key: _formKey,
-      child: AlertDialog(
-        title: titleText,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (message != null)
-              Flexible(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Scrollbar(
-                    child: SingleChildScrollView(
-                      child: Text(message),
+    return WillPopScope(
+      onWillPop: widget.onWillPop,
+      child: Form(
+        key: _formKey,
+        child: AlertDialog(
+          title: titleText,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (message != null)
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Scrollbar(
+                      child: SingleChildScrollView(
+                        child: Text(message),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ..._textControllers.mapWithIndex((c, i) {
-              final textField = widget.textFields[i];
-              return TextFormField(
-                controller: c,
-                autofocus: i == 0,
-                obscureText: textField.obscureText,
-                keyboardType: textField.keyboardType,
-                minLines: textField.minLines,
-                maxLines: textField.maxLines,
-                decoration: InputDecoration(
-                  hintText: textField.hintText,
-                  prefixText: textField.prefixText,
-                  suffixText: textField.suffixText,
-                ),
-                validator: textField.validator,
-                autovalidateMode: _autovalidateMode,
-              );
-              },
-            ),
-            validationMessage != null ? Container(
-              alignment: AlignmentDirectional.centerStart,
-              padding: const EdgeInsets.only(
-                top: 4,
-                left: 4,
-              ),
-              child: Text(
-                validationMessage,
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  height: 1.2,
-                ),
-                textAlign: TextAlign.start,
-              ),
-            ) : new Container()
-          ],
-        ),
-        actions: [
-          TextButton(
-            child: Text(
-              (widget.fullyCapitalized
-                      ? cancelLabel?.toUpperCase()
-                      : cancelLabel) ??
-                  MaterialLocalizations.of(context).cancelButtonLabel,
-            ),
-            onPressed: cancel,
+              ..._textControllers.mapIndexed((i, c) {
+                final isLast = widget.textFields.length == i + 1;
+                final field = widget.textFields[i];
+                return TextFormField(
+                  controller: c,
+                  autofocus: i == 0,
+                  obscureText: field.obscureText,
+                  keyboardType: field.keyboardType,
+                  textCapitalization: field.textCapitalization,
+                  minLines: field.minLines,
+                  maxLines: field.maxLines,
+                  maxLength: field.maxLength,
+                  autocorrect: field.autocorrect,
+                  decoration: InputDecoration(
+                    hintText: field.hintText,
+                    prefixText: field.prefixText,
+                    suffixText: field.suffixText,
+                  ),
+                  validator: field.validator,
+                  autovalidateMode: _autovalidateMode,
+                  textInputAction: isLast ? null : TextInputAction.next,
+                  onFieldSubmitted: isLast && widget.autoSubmit
+                      ? (_) => submitIfValid()
+                      : null,
+                );
+              })
+            ],
           ),
-          TextButton(
-            child: okText,
-            onPressed: () async{
-              if (_formKey.currentState!.validate()) {
-                if (await _validateAsync()) {
-                  pop();
-                }
-
-              } else if (_autovalidateMode == AutovalidateMode.disabled) {
-                setState(() {
-                  _autovalidateMode = AutovalidateMode.always;
-                });
-              }
-            },
-          )
-        ],
-        actionsOverflowDirection: widget.actionsOverflowDirection,
+          actions: [
+            TextButton(
+              onPressed: cancel,
+              child: Text(
+                (widget.fullyCapitalized
+                        ? cancelLabel?.toUpperCase()
+                        : cancelLabel) ??
+                    MaterialLocalizations.of(context).cancelButtonLabel,
+              ),
+            ),
+            TextButton(
+              onPressed: submitIfValid,
+              child: okText,
+            )
+          ],
+          actionsOverflowDirection: widget.actionsOverflowDirection,
+        ),
       ),
     );
-  }
-
-  Future<bool> _validateAsync() async {
-    var i = 0;
-    final validations = <String>[];
-    for(final item in widget.textFields) {
-      final element = widget.textFields[i];
-      final validator = element.validatorAsync;
-      if (validator != null) {
-        final result = await validator(_textControllers[i].text);
-        if (result != null) {
-          validations.add(result);
-        }
-      }
-      i++;
-    }
-    setState(() {
-      _validationMessage = validations.join('\n');
-    });
-    return validations.isEmpty;
   }
 }

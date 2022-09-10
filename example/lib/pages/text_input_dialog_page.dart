@@ -1,19 +1,26 @@
 import 'package:adaptive_dialog/adaptive_dialog.dart';
-import 'package:example/router.dart';
+import 'package:example/pages/home_page.dart';
+import 'package:example/router/router.dart';
 import 'package:example/util/util.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-class TextInputDialogPage extends StatelessWidget {
+class TextInputDialogRoute extends GoRouteData {
+  const TextInputDialogRoute();
+  @override
+  Widget build(BuildContext context) => const TextInputDialogPage();
+}
+
+class TextInputDialogPage extends ConsumerWidget {
   const TextInputDialogPage({Key? key}) : super(key: key);
 
-  static const routeName = '/text_input_dialog';
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(pascalCaseFromRouteName(routeName)),
+        title: Text(pascalCaseFromRouteName(GoRouter.of(context).location)),
       ),
       body: ListView(
         children: <Widget>[
@@ -50,6 +57,7 @@ class TextInputDialogPage extends StatelessWidget {
                 textFields: const [
                   DialogTextField(
                     hintText: 'hintText',
+                    maxLength: 24,
                   ),
                 ],
                 title: 'Hello',
@@ -78,6 +86,31 @@ class TextInputDialogPage extends StatelessWidget {
                 ],
                 title: 'Hello',
                 message: 'This is a message',
+              );
+              logger.info(text);
+            },
+          ),
+          ListTile(
+            title: const Text('Title/Message (Validation・autoSubmit)'),
+            onTap: () async {
+              final text = await showTextInputDialog(
+                context: context,
+                textFields: [
+                  DialogTextField(
+                    hintText: 'hintText',
+                    validator: (value) =>
+                        value!.isEmpty ? 'Input more than one character' : null,
+                  ),
+                  DialogTextField(
+                    hintText: 'hintText',
+                    validator: (value) => value!.length < 2
+                        ? 'Input more than two characters'
+                        : null,
+                  ),
+                ],
+                title: 'Hello',
+                message: 'This is a message',
+                autoSubmit: true,
               );
               logger.info(text);
             },
@@ -126,6 +159,7 @@ class TextInputDialogPage extends StatelessWidget {
             onTap: () async {
               final ok = await showTextAnswerDialog(
                 context: context,
+                autoSubmit: true,
                 keyword: 'Flutter',
                 title: 'What\'s the best mobile application framework?',
                 message: 'Input answer and press OK',
@@ -133,11 +167,14 @@ class TextInputDialogPage extends StatelessWidget {
                 hintText: 'Start with "F"',
                 retryTitle: 'Incorrect',
                 retryMessage: 'Retry?',
-                retryOkLabel: AdaptiveStyle.adaptive.isCupertinoStyle(theme)
-                    ? 'Retry'
-                    : 'RETRY',
+                retryOkLabel: ref
+                        .watch(adaptiveStyleProvider)
+                        .effectiveStyle(theme)
+                        .isMaterial(theme)
+                    ? 'RETRY'
+                    : 'Retry',
               );
-              print('ok: $ok');
+              logger.info('ok: $ok');
               if (!ok) {
                 return;
               }

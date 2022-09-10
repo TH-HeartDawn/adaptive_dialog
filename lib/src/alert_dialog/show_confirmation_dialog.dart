@@ -1,6 +1,5 @@
 import 'package:adaptive_dialog/adaptive_dialog.dart';
 import 'package:animations/animations.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 /// Show [confirmation dialog](https://material.io/components/dialogs#confirmation-dialog),
@@ -24,18 +23,46 @@ Future<T?> showConfirmationDialog<T>({
   List<AlertDialogAction<T>> actions = const [],
   T? initialSelectedActionKey,
   bool barrierDismissible = true,
-  AdaptiveStyle style = AdaptiveStyle.adaptive,
+  AdaptiveStyle? style,
   bool useRootNavigator = true,
   bool shrinkWrap = true,
   bool fullyCapitalizedForMaterial = true,
+  WillPopCallback? onWillPop,
+  AdaptiveDialogBuilder? builder,
+  RouteSettings? routeSettings,
 }) {
   void pop(T? key) => Navigator.of(
         context,
         rootNavigator: useRootNavigator,
       ).pop(key);
   final theme = Theme.of(context);
-  return style.isCupertinoStyle(theme)
-      ? showModalActionSheet(
+  final adaptiveStyle = style ?? AdaptiveDialog.instance.defaultStyle;
+  return adaptiveStyle.isMaterial(theme)
+      ? showModal(
+          context: context,
+          useRootNavigator: useRootNavigator,
+          routeSettings: routeSettings,
+          configuration: FadeScaleTransitionConfiguration(
+            barrierDismissible: barrierDismissible,
+          ),
+          builder: (context) {
+            final dialog = _ConfirmationMaterialDialog(
+              title: title,
+              onSelect: pop,
+              message: message,
+              okLabel: okLabel,
+              cancelLabel: cancelLabel,
+              actions: actions,
+              initialSelectedActionKey: initialSelectedActionKey,
+              contentMaxHeight: contentMaxHeight,
+              shrinkWrap: shrinkWrap,
+              fullyCapitalized: fullyCapitalizedForMaterial,
+              onWillPop: onWillPop,
+            );
+            return builder == null ? dialog : builder(context, dialog);
+          },
+        )
+      : showModalActionSheet(
           context: context,
           title: title,
           message: message,
@@ -43,31 +70,15 @@ Future<T?> showConfirmationDialog<T>({
           actions: actions.convertToSheetActions(),
           style: style,
           useRootNavigator: useRootNavigator,
-        )
-      : showModal(
-          context: context,
-          useRootNavigator: useRootNavigator,
-          configuration: FadeScaleTransitionConfiguration(
-            barrierDismissible: barrierDismissible,
-          ),
-          builder: (context) => _ConfirmationMaterialDialog(
-            title: title,
-            onSelect: pop,
-            message: message,
-            okLabel: okLabel,
-            cancelLabel: cancelLabel,
-            actions: actions,
-            initialSelectedActionKey: initialSelectedActionKey,
-            contentMaxHeight: contentMaxHeight,
-            shrinkWrap: shrinkWrap,
-            fullyCapitalized: fullyCapitalizedForMaterial,
-          ),
+          onWillPop: onWillPop,
+          builder: builder,
+          routeSettings: routeSettings,
         );
 }
 
 class _ConfirmationMaterialDialog<T> extends StatefulWidget {
   const _ConfirmationMaterialDialog({
-    Key? key,
+    super.key,
     required this.title,
     required this.onSelect,
     @required this.message,
@@ -78,7 +89,8 @@ class _ConfirmationMaterialDialog<T> extends StatefulWidget {
     @required this.contentMaxHeight,
     required this.shrinkWrap,
     required this.fullyCapitalized,
-  }) : super(key: key);
+    required this.onWillPop,
+  });
 
   final String title;
   final ValueChanged<T?> onSelect;
@@ -90,6 +102,7 @@ class _ConfirmationMaterialDialog<T> extends StatefulWidget {
   final double? contentMaxHeight;
   final bool shrinkWrap;
   final bool fullyCapitalized;
+  final WillPopCallback? onWillPop;
 
   @override
   _ConfirmationMaterialDialogState<T> createState() =>
@@ -114,45 +127,48 @@ class _ConfirmationMaterialDialogState<T>
     final cancelLabel = widget.cancelLabel;
     final okLabel = widget.okLabel;
     final message = widget.message;
-    return Dialog(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 16,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.title,
-                  style: theme.textTheme.headline6,
-                ),
-                if (message != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      message,
-                      style: theme.textTheme.caption,
-                    ),
+    return WillPopScope(
+      onWillPop: widget.onWillPop,
+      child: Dialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 16,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    style: theme.textTheme.headline6,
                   ),
-              ],
+                  if (message != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        message,
+                        style: theme.textTheme.caption,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          const Divider(height: 0),
-          Flexible(
-            child: SizedBox(
-              height: widget.contentMaxHeight,
-              child: ListView(
-                // This switches physics automatically, so if there is enough
-                // height, `NeverScrollableScrollPhysics` will be set.
-                controller: _scrollController,
-                shrinkWrap: widget.shrinkWrap,
-                children: widget.actions
-                    .map((action) => RadioListTile<T>(
+            const Divider(height: 0),
+            Flexible(
+              child: SizedBox(
+                height: widget.contentMaxHeight,
+                child: ListView(
+                  // This switches physics automatically, so if there is enough
+                  // height, `NeverScrollableScrollPhysics` will be set.
+                  controller: _scrollController,
+                  shrinkWrap: widget.shrinkWrap,
+                  children: widget.actions
+                      .map(
+                        (action) => RadioListTile<T>(
                           title: Text(action.label),
                           value: action.key,
                           groupValue: _selectedKey,
@@ -162,38 +178,40 @@ class _ConfirmationMaterialDialogState<T>
                             });
                           },
                           toggleable: true,
-                        ))
-                    .toList(),
+                        ),
+                      )
+                      .toList(),
+                ),
               ),
             ),
-          ),
-          const Divider(height: 0),
-          ButtonBar(
-            layoutBehavior: ButtonBarLayoutBehavior.constrained,
-            children: [
-              TextButton(
-                child: Text(
-                  (widget.fullyCapitalized
-                          ? cancelLabel?.toUpperCase()
-                          : cancelLabel) ??
-                      MaterialLocalizations.of(context).cancelButtonLabel,
+            const Divider(height: 0),
+            ButtonBar(
+              layoutBehavior: ButtonBarLayoutBehavior.constrained,
+              children: [
+                TextButton(
+                  child: Text(
+                    (widget.fullyCapitalized
+                            ? cancelLabel?.toUpperCase()
+                            : cancelLabel) ??
+                        MaterialLocalizations.of(context).cancelButtonLabel,
+                  ),
+                  onPressed: () => widget.onSelect(null),
                 ),
-                onPressed: () => widget.onSelect(null),
-              ),
-              TextButton(
-                child: Text(
-                  (widget.fullyCapitalized
-                          ? okLabel?.toUpperCase()
-                          : okLabel) ??
-                      MaterialLocalizations.of(context).okButtonLabel,
-                ),
-                onPressed: _selectedKey == null
-                    ? null
-                    : () => widget.onSelect(_selectedKey),
-              )
-            ],
-          )
-        ],
+                TextButton(
+                  onPressed: _selectedKey == null
+                      ? null
+                      : () => widget.onSelect(_selectedKey),
+                  child: Text(
+                    (widget.fullyCapitalized
+                            ? okLabel?.toUpperCase()
+                            : okLabel) ??
+                        MaterialLocalizations.of(context).okButtonLabel,
+                  ),
+                )
+              ],
+            )
+          ],
+        ),
       ),
     );
   }
